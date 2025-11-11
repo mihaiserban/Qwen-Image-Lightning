@@ -1,12 +1,12 @@
 import runpod
-from diffusers import QwenImageEditPlusPipeline
+from diffusers import QwenImageEditPipeline
 import torch
 from io import BytesIO
 import base64
 from PIL import Image
 
 # Load model on startup
-pipe = QwenImageEditPlusPipeline.from_pretrained(
+pipe = QwenImageEditPipeline.from_pretrained(
     "Qwen/Qwen-Image-Edit-2509", torch_dtype=torch.float16
 ).to("cuda")
 
