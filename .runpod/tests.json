@@ -1,0 +1,52 @@
+{
+  "tests": [
+    {
+      "name": "validation_image_edit",
+      "input": {
+        "selfie": "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==",
+        "prompt": "vacation photo, warm sunset, beach background",
+        "num_inference_steps": 8,
+        "guidance_scale": 1.0,
+        "strength": 0.7,
+        "seed": 42
+      },
+      "timeout": 60000
+    },
+    {
+      "name": "validation_minimal_input",
+      "input": {
+        "selfie": "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==",
+        "prompt": "professional headshot"
+      },
+      "timeout": 60000
+    },
+    {
+      "name": "validation_custom_settings",
+      "input": {
+        "selfie": "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==",
+        "prompt": "outdoor portrait, golden hour lighting",
+        "negative_prompt": "indoor, studio lighting, artificial",
+        "num_inference_steps": 4,
+        "strength": 0.5,
+        "seed": 12345
+      },
+      "timeout": 60000
+    }
+  ],
+  "config": {
+    "gpuTypeId": "NVIDIA L4",
+    "gpuCount": 1,
+    "env": [
+      {
+        "key": "HF_TOKEN",
+        "value": ""
+      }
+    ],
+    "allowedCudaVersions": [
+      "11.8",
+      "12.0",
+      "12.1",
+      "12.2"
+    ]
+  }
+}

@@ -7,6 +7,7 @@
   "config": {
     "runsOn": "GPU",
     "containerDiskInGb": 20,
+    "handlerFile": "handler.py",
     "presets": [
       {
         "name": "Default",
