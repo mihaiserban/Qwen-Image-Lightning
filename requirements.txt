@@ -1,10 +1,7 @@
+torch
+diffusers
+transformers
+accelerate
+safetensors
+pillow
 runpod
-diffusers==0.35.1
-transformers==4.45.1
-accelerate==0.28.0
-torch==2.0.1
-pillow==10.4.0
-numpy
-safetensors==0.4.3
-xformers==0.0.22.post7
-huggingface-hub==0.23.4

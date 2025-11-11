@@ -1,29 +1,50 @@
 {
-  "title": "Qwen Image Lightning Edit",
-  "description": "Fast Qwen Image Edit Lightning (4/8-step distillation) for personalized vacation photos with face preservation, pose, bokeh, and grain.",
+  "title": "Qwen Image Edit",
+  "description": "A Runpod serverless deployment for Qwen/Qwen-Image-Edit-2509 to edit images based on text prompts.",
   "type": "serverless",
   "category": "image",
-  "iconUrl": "https://raw.githubusercontent.com/ModelTC/Qwen-Image-Lightning/main/icon.png",
+  "iconUrl": "https://huggingface.co/front/thumbnails/qwen.png",
   "config": {
     "runsOn": "GPU",
     "containerDiskInGb": 20,
-    "handlerFile": "handler.py",
-    "presets": [
+    "gpuCount": 1,
+    "gpuIds": "RTX A4000,-NVIDIA RTX 4090",
+    "allowedCudaVersions": ["12.8", "12.7", "12.6", "12.5", "12.4", "12.3"],
+    "env": [
       {
-        "name": "Default",
-        "defaults": {
-          "HF_TOKEN": ""
+        "key": "HF_MODEL",
+        "input": {
+          "type": "huggingface",
+          "name": "Hugging Face Model",
+          "description": "Model organization/name as listed on Hugging Face Hub",
+          "default": "Qwen/Qwen-Image-Edit-2509",
+          "required": true
+        }
+      },
+      {
+        "key": "HF_HUB_CACHE",
+        "value": "/cache/huggingface"
+      },
+      {
+        "key": "PRECISION",
+        "input": {
+          "name": "Model precision",
+          "type": "string",
+          "description": "Precision for inference",
+          "options": [
+            { "label": "FP16", "value": "fp16" },
+            { "label": "FP32", "value": "fp32" }
+          ],
+          "default": "fp16"
         }
       }
     ],
-    "env": [
+    "presets": [
       {
-        "key": "HF_TOKEN",
-        "input": {
-          "name": "Hugging Face Token",
-          "type": "string",
-          "description": "Your Hugging Face access token for downloading models",
-          "default": ""
+        "name": "Standard",
+        "defaults": {
+          "HF_MODEL": "Qwen/Qwen-Image-Edit-2509",
+          "PRECISION": "fp16"
         }
       }
     ]

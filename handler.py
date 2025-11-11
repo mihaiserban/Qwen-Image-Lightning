@@ -1,41 +1,27 @@
-# handler.py — RunPod Serverless
-# Model: Qwen-Image-Edit-Lightning-8steps-V2.0
-# Input: base64 selfie + prompt
-# Output: base64 PNG (9:16, film grain, warm tone)
-
 import runpod
-import base64
-import io
-import torch
-import numpy as np
-from PIL import Image, ImageEnhance
 from diffusers import DiffusionPipeline
-from safetensors.torch import load_file
+import torch
+from io import BytesIO
+import base64
+from PIL import Image
+import numpy as np
 
-# Global pipeline (loaded once per worker)
-pipe = None
+# Load model on startup (module level)
+pipe = DiffusionPipeline.from_pretrained(
+    "Qwen/Qwen-Image-Edit-2509",
+    torch_dtype=torch.float16,
+    safety_checker=None,
+    requires_safety_checker=False
+).to("cuda")
 
-def init_pipeline():
-    global pipe
-    if pipe is not None:
-        return pipe
+# Load Lightning LoRA (8-step V2.0)
+lora_path = "/workspace/models/Qwen-Image-Lightning-8steps-V2.0.safetensors"
+pipe.load_lora_weights(lora_path)
 
-    # Load base Qwen-Image-Edit (from HF)
-    pipe = DiffusionPipeline.from_pretrained(
-        "Qwen/Qwen-Image-Edit-2509",
-        torch_dtype=torch.float16,
-        safety_checker=None,
-        requires_safety_checker=False
-    ).to("cuda")
+# Optimize pipeline
+pipe.enable_xformers_memory_efficient_attention()
+pipe.unet.to(memory_format=torch.channels_last)
 
-    # Load Lightning LoRA (8-step V2.0 — best quality/speed)
-    lora_path = "/workspace/models/Qwen-Image-Lightning-8steps-V2.0.safetensors"
-    pipe.load_lora_weights(lora_path)
-
-    # Optimize
-    pipe.enable_xformers_memory_efficient_attention()
-    pipe.unet.to(memory_format=torch.channels_last)
-    return pipe
 
 def add_film_grain(img: Image.Image, intensity: float = 0.05) -> Image.Image:
     """Add authentic film grain."""
@@ -44,17 +30,19 @@ def add_film_grain(img: Image.Image, intensity: float = 0.05) -> Image.Image:
     arr = np.clip(arr + noise, 0, 1)
     return Image.fromarray((arr * 255).astype(np.uint8))
 
-def handler(job):
-    global pipe
-    
-    try:
-        input_data = job["input"]
 
-        # --- Validate required inputs ---
+def handler(event):
+    """
+    RunPod handler function. Receives job input and returns output.
+    """
+    try:
+        input_data = event["input"]
+        
+        # Validate required inputs
         if "selfie" not in input_data:
             return {"error": "Missing required field: selfie"}
-
-        # --- Input ---
+        
+        # Get input parameters
         selfie_b64 = input_data["selfie"]
         prompt = input_data.get("prompt", "")
         neg_prompt = input_data.get("negative_prompt", "blurry, deformed, ugly, extra limbs, watermark, cartoon, lowres")
@@ -62,27 +50,21 @@ def handler(job):
         guidance = input_data.get("guidance_scale", 1.0)
         strength = input_data.get("strength", 0.7)
         seed = input_data.get("seed", 42)
-
-        # --- Decode selfie ---
+        
+        # Decode base64 image
         try:
-            selfie = Image.open(io.BytesIO(base64.b64decode(selfie_b64))).convert("RGB")
+            selfie = Image.open(BytesIO(base64.b64decode(selfie_b64))).convert("RGB")
             selfie = selfie.resize((1024, 1024), Image.LANCZOS)
         except Exception as e:
             return {"error": f"Invalid image data: {str(e)}"}
-
-        # --- Initialize pipeline ---
-        try:
-            pipe = init_pipeline()
-        except Exception as e:
-            return {"error": f"Failed to initialize pipeline: {str(e)}"}
-
-        # --- Generate / Edit ---
+        
+        # Generate image
         try:
             generator = torch.Generator("cuda").manual_seed(seed)
             output = pipe(
+                image=selfie,
                 prompt=prompt,
                 negative_prompt=neg_prompt,
-                image=selfie,
                 strength=strength,
                 num_inference_steps=steps,
                 guidance_scale=guidance,
@@ -92,24 +74,27 @@ def handler(job):
             return {"error": "GPU out of memory. Try reducing image size or steps."}
         except Exception as e:
             return {"error": f"Generation failed: {str(e)}"}
-
-        # --- Post-process: 9:16, grain, warm tone ---
+        
+        # Post-process: 9:16 aspect ratio, film grain, warm tone
         w, h = output.size
         target_h = int(w * 16 / 9)
         output = output.resize((w, target_h), Image.LANCZOS)
         output = add_film_grain(output, intensity=0.05)
-        output = ImageEnhance.Color(output).enhance(1.08)  # Warm afternoon light
-
-        # --- Encode result ---
-        buf = io.BytesIO()
-        output.save(buf, format="PNG", optimize=True)
-        result_b64 = base64.b64encode(buf.getvalue()).decode()
-
-        return {"image": result_b64}
-    
+        
+        # Warm tone enhancement
+        from PIL import ImageEnhance
+        output = ImageEnhance.Color(output).enhance(1.08)
+        
+        # Encode result to base64
+        buffered = BytesIO()
+        output.save(buffered, format="PNG", optimize=True)
+        img_str = base64.b64encode(buffered.getvalue()).decode("utf-8")
+        
+        return {"image": img_str, "prompt": prompt}
+        
     except Exception as e:
-        return {"error": f"Unexpected error: {str(e)}"}
+        return {"error": str(e)}
 
-# Start RunPod serverless handler
-if __name__ == "__main__":
-    runpod.serverless.start({"handler": handler})
+
+# Required by RunPod
+runpod.serverless.start({"handler": handler})

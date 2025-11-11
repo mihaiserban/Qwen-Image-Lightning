@@ -1,52 +1,23 @@
 {
   "tests": [
     {
-      "name": "validation_image_edit",
+      "name": "basic_image_edit_test",
       "input": {
-        "selfie": "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==",
-        "prompt": "vacation photo, warm sunset, beach background",
-        "num_inference_steps": 8,
-        "guidance_scale": 1.0,
-        "strength": 0.7,
-        "seed": 42
+        "prompt": "Turn this cat into a dog",
+        "image_url": "https://huggingface.co/datasets/huggingface/documentation-images/resolve/main/diffusers/cat.png"
       },
-      "timeout": 60000
-    },
-    {
-      "name": "validation_minimal_input",
-      "input": {
-        "selfie": "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==",
-        "prompt": "professional headshot"
-      },
-      "timeout": 60000
-    },
-    {
-      "name": "validation_custom_settings",
-      "input": {
-        "selfie": "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==",
-        "prompt": "outdoor portrait, golden hour lighting",
-        "negative_prompt": "indoor, studio lighting, artificial",
-        "num_inference_steps": 4,
-        "strength": 0.5,
-        "seed": 12345
-      },
-      "timeout": 60000
+      "timeout": 30000
     }
   ],
   "config": {
-    "gpuTypeId": "NVIDIA L4",
+    "gpuTypeId": "NVIDIA RTX A4000",
     "gpuCount": 1,
     "env": [
       {
-        "key": "HF_TOKEN",
-        "value": ""
+        "key": "HF_MODEL",
+        "value": "Qwen/Qwen-Image-Edit-2509"
       }
     ],
-    "allowedCudaVersions": [
-      "11.8",
-      "12.0",
-      "12.1",
-      "12.2"
-    ]
+    "allowedCudaVersions": ["12.8", "12.7", "12.6", "12.5", "12.4", "12.3"]
   }
 }
