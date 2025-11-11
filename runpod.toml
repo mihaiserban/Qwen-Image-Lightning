@@ -1,0 +1,4 @@
+[runpod]
+image_name = "mihaiserban/qwen-image-lightning"
+network_volume_id = "your_volume_id"
+network_volume_mount_path = "/workspace"
