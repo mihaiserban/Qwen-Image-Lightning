@@ -3,6 +3,7 @@
 # Input: base64 selfie + prompt
 # Output: base64 PNG (9:16, film grain, warm tone)
 
+import runpod
 import base64
 import io
 import torch
@@ -89,8 +90,6 @@ def handler(job):
 
     return {"image": result_b64}
 
-# Local test
+# Start RunPod serverless handler
 if __name__ == "__main__":
-    import json, sys
-    job = json.load(sys.stdin) if not sys.stdin.isatty() else {}
-    print(json.dumps(handler(job)))
+    runpod.serverless.start({"handler": handler})

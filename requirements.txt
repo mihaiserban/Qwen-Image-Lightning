@@ -1,3 +1,4 @@
+runpod
 diffusers==0.35.1
 transformers==4.45.1
 accelerate==0.28.0
