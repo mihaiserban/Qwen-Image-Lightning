@@ -32,8 +32,8 @@
           "type": "string",
           "description": "Precision for inference",
           "options": [
-            { "label": "FP16", "value": "fp16" },
-            { "label": "FP32", "value": "fp32" }
+            {"label": "FP16", "value": "fp16"},
+            {"label": "FP32", "value": "fp32"}
           ],
           "default": "fp16"
         }

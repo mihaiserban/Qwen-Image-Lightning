@@ -1,100 +1,61 @@
 import runpod
-from diffusers import DiffusionPipeline
+from diffusers import QwenImageEditPlusPipeline
 import torch
 from io import BytesIO
 import base64
 from PIL import Image
-import numpy as np
 
-# Load model on startup (module level)
-pipe = DiffusionPipeline.from_pretrained(
-    "Qwen/Qwen-Image-Edit-2509",
-    torch_dtype=torch.float16,
-    safety_checker=None,
-    requires_safety_checker=False
+# Load model on startup
+pipe = QwenImageEditPlusPipeline.from_pretrained(
+    "Qwen/Qwen-Image-Edit-2509", torch_dtype=torch.float16
 ).to("cuda")
 
-# Load Lightning LoRA (8-step V2.0)
-lora_path = "/workspace/models/Qwen-Image-Lightning-8steps-V2.0.safetensors"
-pipe.load_lora_weights(lora_path)
-
-# Optimize pipeline
-pipe.enable_xformers_memory_efficient_attention()
-pipe.unet.to(memory_format=torch.channels_last)
-
-
-def add_film_grain(img: Image.Image, intensity: float = 0.05) -> Image.Image:
-    """Add authentic film grain."""
-    arr = np.array(img, dtype=np.float32) / 255.0
-    noise = np.random.normal(0, intensity, arr.shape)
-    arr = np.clip(arr + noise, 0, 1)
-    return Image.fromarray((arr * 255).astype(np.uint8))
-
+def decode_base64_to_image(base64_string):
+    """
+    Decode base64 string to PIL Image.
+    """
+    image_bytes = base64.b64decode(base64_string)
+    return Image.open(BytesIO(image_bytes))
 
 def handler(event):
     """
-    RunPod handler function. Receives job input and returns output.
+    Runpod handler function. Receives job input and returns output.
+    Supports:
+    - Single image mode: image_base64 + prompt
+    - Dual image mode: image1_base64 + image2_base64 + prompt
     """
     try:
         input_data = event["input"]
+        prompt = input_data.get("prompt", "Enhance the image")
         
-        # Validate required inputs
-        if "selfie" not in input_data:
-            return {"error": "Missing required field: selfie"}
+        # Check for single image mode
+        image_base64 = input_data.get("image_base64")
         
-        # Get input parameters
-        selfie_b64 = input_data["selfie"]
-        prompt = input_data.get("prompt", "")
-        neg_prompt = input_data.get("negative_prompt", "blurry, deformed, ugly, extra limbs, watermark, cartoon, lowres")
-        steps = input_data.get("num_inference_steps", 8)
-        guidance = input_data.get("guidance_scale", 1.0)
-        strength = input_data.get("strength", 0.7)
-        seed = input_data.get("seed", 42)
+        # Check for dual image mode
+        image1_base64 = input_data.get("image1_base64")
+        image2_base64 = input_data.get("image2_base64")
         
-        # Decode base64 image
-        try:
-            selfie = Image.open(BytesIO(base64.b64decode(selfie_b64))).convert("RGB")
-            selfie = selfie.resize((1024, 1024), Image.LANCZOS)
-        except Exception as e:
-            return {"error": f"Invalid image data: {str(e)}"}
+        # Determine mode and process images
+        if image_base64:
+            # Single image mode
+            input_image = decode_base64_to_image(image_base64)
+            output_image = pipe(image=input_image, prompt=prompt).images[0]
+        elif image1_base64 and image2_base64:
+            # Dual image mode
+            image1 = decode_base64_to_image(image1_base64)
+            image2 = decode_base64_to_image(image2_base64)
+            output_image = pipe(image=[image1, image2], prompt=prompt).images[0]
+        else:
+            return {"error": "Missing image parameters. Provide either 'image_base64' or both 'image1_base64' and 'image2_base64'."}
         
-        # Generate image
-        try:
-            generator = torch.Generator("cuda").manual_seed(seed)
-            output = pipe(
-                image=selfie,
-                prompt=prompt,
-                negative_prompt=neg_prompt,
-                strength=strength,
-                num_inference_steps=steps,
-                guidance_scale=guidance,
-                generator=generator
-            ).images[0]
-        except torch.cuda.OutOfMemoryError:
-            return {"error": "GPU out of memory. Try reducing image size or steps."}
-        except Exception as e:
-            return {"error": f"Generation failed: {str(e)}"}
-        
-        # Post-process: 9:16 aspect ratio, film grain, warm tone
-        w, h = output.size
-        target_h = int(w * 16 / 9)
-        output = output.resize((w, target_h), Image.LANCZOS)
-        output = add_film_grain(output, intensity=0.05)
-        
-        # Warm tone enhancement
-        from PIL import ImageEnhance
-        output = ImageEnhance.Color(output).enhance(1.08)
-        
-        # Encode result to base64
+        # Convert output to base64
         buffered = BytesIO()
-        output.save(buffered, format="PNG", optimize=True)
+        output_image.save(buffered, format="PNG")
         img_str = base64.b64encode(buffered.getvalue()).decode("utf-8")
-        
-        return {"image": img_str, "prompt": prompt}
-        
+
+        return {"output_image_base64": img_str, "prompt": prompt}
     except Exception as e:
         return {"error": str(e)}
 
-
-# Required by RunPod
+# Required by Runpod
 runpod.serverless.start({"handler": handler})
