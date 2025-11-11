@@ -1,33 +1,30 @@
 {
-  "name": "Qwen-Image-Lightning-Edit",
+  "title": "Qwen Image Lightning Edit",
   "description": "Fast Qwen Image Edit Lightning (4/8-step distillation) for personalized vacation photos with face preservation, pose, bokeh, and grain.",
   "type": "serverless",
-  "image_name": "runpod/pytorch:2.0.1-py3.10-cuda11.8.0-devel-ubuntu22.04",
-  "runpod": {
-    "gpu_type_id": "NVIDIA L4",
-    "gpu_count": 1,
-    "min_workers": 0,
-    "max_workers": 3,
-    "idle_timeout": 300,
-    "command": "python handler.py",
-    "env": {
-      "HF_TOKEN": "{{HF_TOKEN}}"
-    },
-    "volume": {
-      "mount_path": "/workspace",
-      "size_gb": 20
-    }
-  },
-  "meta": {
-    "icon": "https://raw.githubusercontent.com/ModelTC/Qwen-Image-Lightning/main/icon.png",
-    "cover": "https://raw.githubusercontent.com/ModelTC/Qwen-Image-Lightning/main/cover.jpg",
-    "tags": [
-      "image-generation",
-      "editing",
-      "qwen",
-      "lightning",
-      "text-to-image"
+  "category": "image",
+  "iconUrl": "https://raw.githubusercontent.com/ModelTC/Qwen-Image-Lightning/main/icon.png",
+  "config": {
+    "runsOn": "GPU",
+    "containerDiskInGb": 20,
+    "presets": [
+      {
+        "name": "Default",
+        "defaults": {
+          "HF_TOKEN": ""
+        }
+      }
+    ],
+    "env": [
+      {
+        "key": "HF_TOKEN",
+        "input": {
+          "name": "Hugging Face Token",
+          "type": "string",
+          "description": "Your Hugging Face access token for downloading models",
+          "default": ""
+        }
+      }
     ]
-  },
-  "version": "1.0.0"
+  }
 }
