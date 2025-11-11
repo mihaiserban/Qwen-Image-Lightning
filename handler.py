@@ -46,49 +46,69 @@ def add_film_grain(img: Image.Image, intensity: float = 0.05) -> Image.Image:
 
 def handler(job):
     global pipe
-    input_data = job["input"]
+    
+    try:
+        input_data = job["input"]
 
-    # --- Input ---
-    selfie_b64 = input_data["selfie"]
-    prompt = input_data.get("prompt", "")
-    neg_prompt = input_data.get("negative_prompt", "blurry, deformed, ugly, extra limbs, watermark, cartoon, lowres")
-    steps = input_data.get("num_inference_steps", 8)
-    guidance = input_data.get("guidance_scale", 1.0)
-    strength = input_data.get("strength", 0.7)
-    seed = input_data.get("seed", 42)
+        # --- Validate required inputs ---
+        if "selfie" not in input_data:
+            return {"error": "Missing required field: selfie"}
 
-    # --- Decode selfie ---
-    selfie = Image.open(io.BytesIO(base64.b64decode(selfie_b64))).convert("RGB")
-    selfie = selfie.resize((1024, 1024), Image.LANCZOS)
+        # --- Input ---
+        selfie_b64 = input_data["selfie"]
+        prompt = input_data.get("prompt", "")
+        neg_prompt = input_data.get("negative_prompt", "blurry, deformed, ugly, extra limbs, watermark, cartoon, lowres")
+        steps = input_data.get("num_inference_steps", 8)
+        guidance = input_data.get("guidance_scale", 1.0)
+        strength = input_data.get("strength", 0.7)
+        seed = input_data.get("seed", 42)
 
-    # --- Initialize pipeline ---
-    pipe = init_pipeline()
+        # --- Decode selfie ---
+        try:
+            selfie = Image.open(io.BytesIO(base64.b64decode(selfie_b64))).convert("RGB")
+            selfie = selfie.resize((1024, 1024), Image.LANCZOS)
+        except Exception as e:
+            return {"error": f"Invalid image data: {str(e)}"}
 
-    # --- Generate / Edit ---
-    generator = torch.Generator("cuda").manual_seed(seed)
-    output = pipe(
-        prompt=prompt,
-        negative_prompt=neg_prompt,
-        image=selfie,
-        strength=strength,
-        num_inference_steps=steps,
-        guidance_scale=guidance,
-        generator=generator
-    ).images[0]
+        # --- Initialize pipeline ---
+        try:
+            pipe = init_pipeline()
+        except Exception as e:
+            return {"error": f"Failed to initialize pipeline: {str(e)}"}
 
-    # --- Post-process: 9:16, grain, warm tone ---
-    w, h = output.size
-    target_h = int(w * 16 / 9)
-    output = output.resize((w, target_h), Image.LANCZOS)
-    output = add_film_grain(output, intensity=0.05)
-    output = ImageEnhance.Color(output).enhance(1.08)  # Warm afternoon light
+        # --- Generate / Edit ---
+        try:
+            generator = torch.Generator("cuda").manual_seed(seed)
+            output = pipe(
+                prompt=prompt,
+                negative_prompt=neg_prompt,
+                image=selfie,
+                strength=strength,
+                num_inference_steps=steps,
+                guidance_scale=guidance,
+                generator=generator
+            ).images[0]
+        except torch.cuda.OutOfMemoryError:
+            return {"error": "GPU out of memory. Try reducing image size or steps."}
+        except Exception as e:
+            return {"error": f"Generation failed: {str(e)}"}
 
-    # --- Encode result ---
-    buf = io.BytesIO()
-    output.save(buf, format="PNG", optimize=True)
-    result_b64 = base64.b64encode(buf.getvalue()).decode()
+        # --- Post-process: 9:16, grain, warm tone ---
+        w, h = output.size
+        target_h = int(w * 16 / 9)
+        output = output.resize((w, target_h), Image.LANCZOS)
+        output = add_film_grain(output, intensity=0.05)
+        output = ImageEnhance.Color(output).enhance(1.08)  # Warm afternoon light
 
-    return {"image": result_b64}
+        # --- Encode result ---
+        buf = io.BytesIO()
+        output.save(buf, format="PNG", optimize=True)
+        result_b64 = base64.b64encode(buf.getvalue()).decode()
+
+        return {"image": result_b64}
+    
+    except Exception as e:
+        return {"error": f"Unexpected error: {str(e)}"}
 
 # Start RunPod serverless handler
 if __name__ == "__main__":
