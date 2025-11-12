@@ -1,25 +1,21 @@
-# Use a modern Runpod PyTorch base image
-FROM runpod/pytorch:1.0.2-cu1281-torch271-ubuntu2204
+# Use RunPod base image
+FROM runpod/base:0.6.3-cuda12.4.0
 
-# Install dependencies including huggingface-cli
-RUN pip install --no-cache-dir diffusers transformers accelerate safetensors pillow runpod hf_transfer bitsandbytes "huggingface_hub[cli]"
+# Set python3.11 as the default python
+RUN ln -sf $(which python3.11) /usr/local/bin/python && \
+    ln -sf $(which python3.11) /usr/local/bin/python3
 
-# Set HuggingFace cache to use workspace which RunPod mounts
-ENV HF_HOME=/workspace/huggingface-cache
-ENV HF_HUB_CACHE=/workspace/huggingface-cache/hub
-ENV TRANSFORMERS_CACHE=/workspace/huggingface-cache/transformers
+# Install dependencies
+COPY requirements.txt /requirements.txt
+RUN uv pip install --upgrade -r /requirements.txt --no-cache-dir --system
 
-# Pre-download models during build (optional - they'll be cached in workspace at runtime)
-# Comment out these lines if you prefer to download on first run
-RUN hf download Qwen/Qwen-Image-Edit-2509 || true
-RUN hf download lightx2v/Qwen-Image-Lightning \
-    --include "Qwen-Image-Edit-2509/Qwen-Image-Edit-2509-Lightning-8steps-V1.0-bf16.safetensors" || true
+# Pre-download models and LoRA weights to speed up cold starts
+# Models will be cached in the container
+RUN python3.11 -c "from huggingface_hub import snapshot_download; snapshot_download(repo_id='Qwen/Qwen-Image-Edit-2509', allow_patterns=['*.json', '*.safetensors', '*.model'])"
+RUN python3.11 -c "from huggingface_hub import hf_hub_download; hf_hub_download(repo_id='lightx2v/Qwen-Image-Lightning', filename='Qwen-Image-Edit-2509/Qwen-Image-Edit-2509-Lightning-8steps-V1.0-bf16.safetensors')"
 
-# Set working directory
-WORKDIR /
+# Add handler file
+ADD handler.py .
 
-# Copy handler file to root
-COPY handler.py /handler.py
-
-# RunPod will automatically detect and run handler.py in root
-CMD ["python", "-u", "/handler.py"]
+# Run the handler
+CMD python -u /handler.py

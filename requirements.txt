@@ -1,7 +1,9 @@
-torch
+runpod>=1.7.9
 diffusers
 transformers
 accelerate
 safetensors
 pillow
-runpod
+huggingface_hub
+sentencepiece
+protobuf

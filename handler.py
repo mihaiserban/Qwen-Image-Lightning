@@ -51,9 +51,9 @@ def decode_base64_to_image(base64_string):
     image_bytes = base64.b64decode(base64_string)
     return Image.open(BytesIO(image_bytes))
 
-def handler(event):
+def handler(job):
     """
-    Runpod handler function. Receives job input and returns output.
+    RunPod handler function that processes jobs.
     Supports:
     - Single image mode: image_base64 + prompt
     - Dual image mode: image1_base64 + image2_base64 + prompt
@@ -62,19 +62,19 @@ def handler(event):
     - true_cfg_scale (default: 1.0 for Lightning)
     """
     try:
-        input_data = event["input"]
-        prompt = input_data.get("prompt", "Enhance the image")
+        job_input = job["input"]
+        prompt = job_input.get("prompt", "Enhance the image")
         
         # Get optional parameters with Lightning defaults
-        num_inference_steps = input_data.get("num_inference_steps", 8)
-        true_cfg_scale = input_data.get("true_cfg_scale", 1.0)
+        num_inference_steps = job_input.get("num_inference_steps", 8)
+        true_cfg_scale = job_input.get("true_cfg_scale", 1.0)
         
         # Check for single image mode
-        image_base64 = input_data.get("image_base64")
+        image_base64 = job_input.get("image_base64")
         
         # Check for dual image mode
-        image1_base64 = input_data.get("image1_base64")
-        image2_base64 = input_data.get("image2_base64")
+        image1_base64 = job_input.get("image1_base64")
+        image2_base64 = job_input.get("image2_base64")
         
         # Prepare pipeline arguments
         pipe_args = {
