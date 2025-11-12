@@ -38,9 +38,9 @@ pipe = QwenImageEditPlusPipeline.from_pretrained(
     torch_dtype=torch.bfloat16
 )
 
-# Load Lightning LoRA weights (8-step version)
+# Load Lightning LoRA weights (8-step bf16 version for consistency with torch.bfloat16)
 pipe.load_lora_weights("lightx2v/Qwen-Image-Lightning", 
-                       weight_name="Qwen-Image-Edit-2509/Qwen-Image-Edit-2509-Lightning-8steps-V1.0-fp32.safetensors")
+                       weight_name="Qwen-Image-Edit-2509/Qwen-Image-Edit-2509-Lightning-8steps-V1.0-bf16.safetensors")
 
 pipe = pipe.to("cuda")
 
