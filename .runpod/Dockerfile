@@ -15,9 +15,11 @@ RUN hf download Qwen/Qwen-Image-Edit-2509 || true
 RUN hf download lightx2v/Qwen-Image-Lightning \
     --include "Qwen-Image-Edit-2509/Qwen-Image-Edit-2509-Lightning-8steps-V1.0-bf16.safetensors" || true
 
-# Copy handler file
-WORKDIR /app
-COPY handler.py .
+# Set working directory
+WORKDIR /
 
-# Set entrypoint
-CMD ["python", "handler.py"]
+# Copy handler file to root
+COPY handler.py /handler.py
+
+# RunPod will automatically detect and run handler.py in root
+CMD ["python", "-u", "/handler.py"]
